@@ -1,0 +1,106 @@
+// This is your Prisma schema file,
+// now configured for Prisma 6.x
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String           @id @default(auto()) @map("_id") @db.ObjectId
+  name             String?
+  email            String           @unique
+  password         String
+  credits          Int              @default(0)
+  imageCount       Int              @default(0)
+  usageHistory     String           @default("[]")
+  transactions     Transaction[]
+  generatedImages  GeneratedImage[]
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Transaction {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  amount      Int
+  type        String   // 'credit' or 'debit'
+  description String?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("transactions")
+  @@index([userId])
+}
+
+model Style {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  name                String
+  description         String
+  coverImage          String   // URL to the cover image for the style card
+  exampleBeforeImage  String   // URL to the before image
+  exampleAfterImage   String   // URL to the after image
+  referenceImage       String   // Data URL or URL of the reference style image used for generation
+  prompt              String   // The AI prompt to use for this style
+  nanoBananaPrompt     String?
+  nanoBananaProPrompt  String?
+  model1Name           String?   @default("nano-banana")
+  model1Identifier     String?   @default("google/nano-banana")
+  model1Price          Int?      @default(100)
+  model2Name           String?   @default("nano-banana-pro")
+  model2Identifier     String?   @default("google/nano-banana-pro")
+  model2Price          Int?      @default(300)
+  price2kUpcharge      Int?      @default(200)
+  price4kUpcharge      Int?      @default(500)
+  
+  // Style type and configuration
+  styleType           String    @default("fabric-mockup") // 'fabric-mockup', 'studio-portrait', 'style-transfer'
+  requiresFabricUpload Boolean  @default(true)
+  requiresLogoUpload   Boolean  @default(true)
+  requiresCustomInstructions Boolean @default(true)
+  requiresMannequinReference Boolean @default(true)
+  allowsResolutionSelection Boolean @default(true)
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // A style can be used in many generated images
+  generatedImages     GeneratedImage[]
+
+  @@map("styles")
+}
+
+model EnhanceStyle {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String
+  coverImage  String
+  prompt      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("enhance_styles")
+}
+
+model GeneratedImage {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  originalImageUrl  String   // URL of the image the user uploaded
+  generatedImageUrl String   // URL of the final AI-generated image
+  userId            String   @db.ObjectId
+  styleId           String   @db.ObjectId
+
+  // Links back to the user and the style used
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  style             Style    @relation(fields: [styleId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime @default(now())
+
+  @@map("generated_images")
+}
