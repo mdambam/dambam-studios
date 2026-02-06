@@ -210,3 +210,4 @@ For issues or questions, open an issue or contact support.
 ---
 
 Built with ❤️ using Next.js, React, and Tailwind CSS.
+
