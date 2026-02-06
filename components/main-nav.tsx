@@ -119,7 +119,7 @@ export function MainNav() {
               <Link href="/dashboard" className="text-primary">Dashboard</Link>
             ) : (
               <>
-                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>Sign In</Link>
+                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
                 <Link href="/signup" className="text-primary" onClick={() => setMobileMenuOpen(false)}>Get Started</Link>
               </>
             )}

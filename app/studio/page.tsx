@@ -122,10 +122,18 @@ export default function StudioPage() {
   const [loadingHistory, setLoadingHistory] = useState(true)
 
   const selectedStyle = useMemo(() => styles.find((s) => s.id === selectedStyleId) ?? null, [styles, selectedStyleId])
-  const labels = useMemo(() => getStyleLabels(selectedStyle?.styleType), [selectedStyle?.styleType])
+  const labels = useMemo(() => {
+    // Defensive: if styleType is missing, infer from requiresFabricUpload
+    const effectiveType = selectedStyle?.styleType 
+      || (selectedStyle?.requiresFabricUpload === false ? 'studio-portrait' : 'fabric-mockup')
+    return getStyleLabels(effectiveType)
+  }, [selectedStyle?.styleType, selectedStyle?.requiresFabricUpload])
   const totalPrice = useMemo(() => ({ '4k': 500, '2k': 300, '1k': 100 }[resolutionChoice]), [resolutionChoice])
 
-  const styleType = selectedStyle?.styleType ?? 'fabric-mockup'
+  const styleType = useMemo(() => {
+    return selectedStyle?.styleType 
+      || (selectedStyle?.requiresFabricUpload === false ? 'studio-portrait' : 'fabric-mockup')
+  }, [selectedStyle?.styleType, selectedStyle?.requiresFabricUpload])
   const isFabricMockup = styleType === 'fabric-mockup'
 
   // Studio portrait + style transfer always need a single uploaded image.
@@ -134,27 +142,25 @@ export default function StudioPage() {
   const showCustomInstructions = selectedStyle?.requiresCustomInstructions !== false
   const showResolutionSelection = selectedStyle?.allowsResolutionSelection !== false
 
-  // Load styles with caching
+  // Load styles - NO CACHE, always fresh
   useEffect(() => {
+    // Clear ALL cached data
+    sessionStorage.removeItem('studio_styles')
+    sessionStorage.removeItem('studio_styles_time')
+    sessionStorage.removeItem('studio_styles_v2')
+    sessionStorage.removeItem('studio_styles_time_v2')
+    sessionStorage.removeItem('studio_styles_v3')
+    sessionStorage.removeItem('studio_styles_time_v3')
+    
     const fetchStyles = async () => {
       try {
-        const cached = sessionStorage.getItem('studio_styles_v2')
-        const cachedTime = sessionStorage.getItem('studio_styles_time_v2')
-        if (cached && cachedTime && Date.now() - parseInt(cachedTime) < 120000) {
-          const data = JSON.parse(cached)
-          setStyles(data)
-          setSelectedStyleId(data[0]?.id || null)
-          setLoadingStyles(false)
-          return
-        }
-        
+        console.log('Fetching fresh styles...')
         const res = await fetch('/api/styles')
         const data = await res.json()
+        console.log('Styles received:', data.data?.map((s: Style) => ({id: s.id, name: s.name, styleType: s.styleType, requiresFabricUpload: s.requiresFabricUpload})))
         if (data.status === 'success') {
           setStyles(data.data)
           setSelectedStyleId(data.data[0]?.id || null)
-          sessionStorage.setItem('studio_styles_v2', JSON.stringify(data.data))
-          sessionStorage.setItem('studio_styles_time_v2', Date.now().toString())
         }
       } catch (e) { console.error('Failed to load styles:', e) }
       finally { setLoadingStyles(false) }
@@ -328,7 +334,8 @@ export default function StudioPage() {
                       {styles.map((style) => (
                         <TabsContent key={style.id} value={style.id} className="mt-6">
                           {(() => {
-                            const localLabels = getStyleLabels(style.styleType)
+                            const effectiveType = style.styleType || (style.requiresFabricUpload === false ? 'studio-portrait' : 'fabric-mockup')
+                            const localLabels = getStyleLabels(effectiveType)
                             const showReference =
                               style.requiresMannequinReference !== false &&
                               localLabels.showReference &&

@@ -71,8 +71,8 @@ export async function GET(req: NextRequest) {
     ].join(',')
 
     // CSV Rows
-    const rows = users.map((u) => {
-      const totalCreditsSpent = u.transactions.reduce((sum, t) => sum + t.amount, 0)
+    const rows = users.map((u: { id: string; name: string | null; email: string; credits: number; imageCount: number; transactions: { amount: number }[]; _count: { generatedImages: number }; createdAt: Date; updatedAt: Date }) => {
+      const totalCreditsSpent = u.transactions.reduce((sum: number, t: { amount: number }) => sum + t.amount, 0)
       return [
         u.id,
         `"${(u.name || '').replace(/"/g, '""')}"`,
