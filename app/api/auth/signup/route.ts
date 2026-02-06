@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { hashPassword, generateToken } from '@/lib/auth-utils'
-import { Prisma } from '@prisma/client' // <-- I added this line for better error handling
+// import { Prisma } from '@prisma/client' // Removed - Prisma namespace not available in newer versions
 
 const FALLBACK_ADMIN_EMAIL = 'msdambam@gmail.com'
 
@@ -114,14 +114,16 @@ export async function POST(request: NextRequest) {
     console.error('[v0] Signup API error:', error);
 
     // --- START: IMPROVED ERROR LOGGING ---
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      // This is a known error from Prisma
-      console.error('Prisma Error Code:', error.code);
-      console.error('Prisma Error Meta:', error.meta);
+    // Check if this is a Prisma error by looking at the error code
+    const prismaError = error as any;
+    if (prismaError?.code && typeof prismaError.code === 'string' && prismaError.code.startsWith('P')) {
+      // This is likely a Prisma error
+      console.error('Prisma Error Code:', prismaError.code);
+      console.error('Prisma Error Meta:', prismaError.meta);
       
       // A common error for unique constraint violations
-      if (error.code === 'P2002') {
-        const target = error.meta?.target as string[];
+      if (prismaError.code === 'P2002') {
+        const target = prismaError.meta?.target as string[];
         if (target?.includes('email')) {
           return NextResponse.json(
             { status: 'error', message: 'Email already in use.' },
@@ -132,24 +134,25 @@ export async function POST(request: NextRequest) {
       
       // This is the error we are hunting for!
       // It's a generic validation error.
-      if (error.code === 'P2003') {
+      if (prismaError.code === 'P2003') {
         return NextResponse.json(
-            { status: 'error', message: `Invalid data provided: ${error.message}` },
+            { status: 'error', message: `Invalid data provided: ${prismaError.message}` },
             { status: 400 }
         );
       }
 
       return NextResponse.json(
-        { status: 'error', message: `A database constraint was violated: ${error.message}` },
+        { status: 'error', message: `A database constraint was violated: ${prismaError.message}` },
         { status: 400 }
       );
     }
     
-    if (error instanceof Prisma.PrismaClientValidationError) {
+    // Check for Prisma validation errors
+    if (prismaError?.name === 'PrismaClientValidationError') {
       // This happens when data types don't match the schema
-      console.error('Prisma Validation Error:', error.message);
+      console.error('Prisma Validation Error:', prismaError.message);
       return NextResponse.json(
-        { status: 'error', message: `Data format is incorrect: ${error.message}` },
+        { status: 'error', message: `Data format is incorrect: ${prismaError.message}` },
         { status: 400 }
       );
     }
