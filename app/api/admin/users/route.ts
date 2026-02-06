@@ -59,8 +59,8 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate total credits spent per user
-    const usersWithStats = users.map((u) => {
-      const totalCreditsSpent = u.transactions.reduce((sum, t) => sum + t.amount, 0)
+    const usersWithStats = users.map((u: { id: string; name: string | null; email: string; credits: number; imageCount: number; transactions: { amount: number }[]; _count: { generatedImages: number; transactions: number }; createdAt: Date; updatedAt: Date }) => {
+      const totalCreditsSpent = u.transactions.reduce((sum: number, t: { amount: number }) => sum + t.amount, 0)
       return {
         id: u.id,
         name: u.name,
